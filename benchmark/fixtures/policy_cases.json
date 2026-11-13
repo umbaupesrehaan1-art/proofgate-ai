@@ -1,0 +1,298 @@
+{
+  "schema_version": 1,
+  "base_checks": [
+    {
+      "name": "pre_patch_reproduction",
+      "category": "issue_reproduction",
+      "status": "passed",
+      "message": "Synthetic policy fixture: issue reproduced before the patch.",
+      "details": {
+        "reproduced": true,
+        "conditions_recorded": true,
+        "conditions_id": "benchmark-conditions-v1"
+      }
+    },
+    {
+      "name": "patch_validation",
+      "category": "patch_validation",
+      "status": "passed",
+      "message": "Synthetic policy fixture: patch metadata is valid.",
+      "details": {
+        "valid": true,
+        "changed_paths": [
+          "src/example.py"
+        ]
+      }
+    },
+    {
+      "name": "post_patch_reproduction",
+      "category": "issue_reproduction",
+      "status": "passed",
+      "message": "Synthetic policy fixture: issue no longer reproduces after the patch.",
+      "details": {
+        "reproduced": false,
+        "conditions_id": "benchmark-conditions-v1"
+      }
+    },
+    {
+      "name": "regression_tests",
+      "category": "regression_testing",
+      "status": "passed",
+      "message": "Synthetic policy fixture: required regression checks passed.",
+      "details": {
+        "tests_run": 3
+      }
+    },
+    {
+      "name": "syntax_check",
+      "category": "syntax_checking",
+      "status": "passed",
+      "message": "Synthetic policy fixture: source syntax is valid.",
+      "details": {
+        "syntax_valid": true
+      }
+    },
+    {
+      "name": "static_analysis",
+      "category": "static_analysis",
+      "status": "passed",
+      "message": "Synthetic policy fixture: static checks completed.",
+      "details": {
+        "checks_completed": [
+          "python_ast_parse"
+        ]
+      }
+    },
+    {
+      "name": "execution_safety",
+      "category": "execution_safety",
+      "status": "passed",
+      "message": "Synthetic policy fixture: no actual code was run.",
+      "details": {
+        "untrusted_code_executed": false
+      }
+    }
+  ],
+  "cases": [
+    {
+      "id": "complete_consistent_evidence",
+      "description": "All policy requirements are satisfied by synthetic checks.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "VERIFIED"
+    },
+    {
+      "id": "analysis_only_without_runtime_evidence",
+      "description": "Analysis-only mode cannot establish an execution-dependent decision.",
+      "execution_mode": "analysis_only",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "include_checks": []
+    },
+    {
+      "id": "syntax_valid_without_patch_evidence",
+      "description": "Syntax and static analysis alone do not verify a fix.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "include_checks": [
+        "syntax_check",
+        "static_analysis"
+      ]
+    },
+    {
+      "id": "pre_patch_issue_not_reproduced",
+      "description": "A completed pre-patch run did not reproduce under recorded conditions.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "NOT_REPRODUCED",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "details": {
+            "reproduced": false
+          }
+        }
+      }
+    },
+    {
+      "id": "fixed_issue_with_regressions_passing",
+      "description": "Pre-patch issue reproduces, post-patch it does not, and regressions pass.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "VERIFIED"
+    },
+    {
+      "id": "issue_still_reproduces_after_patch",
+      "description": "A post-patch reproduction prevents verification.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "post_patch_reproduction": {
+          "details": {
+            "reproduced": true
+          }
+        }
+      }
+    },
+    {
+      "id": "regression_test_failure",
+      "description": "A failed required regression check prevents verification.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "regression_tests": {
+          "status": "failed"
+        }
+      }
+    },
+    {
+      "id": "test_timeout",
+      "description": "A timed-out reproduction is inconclusive, not a pass or non-reproduction.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "status": "inconclusive",
+          "details": {
+            "failure_kind": "timeout"
+          }
+        }
+      }
+    },
+    {
+      "id": "required_tests_skipped",
+      "description": "Skipped required regression tests prevent verification.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "regression_tests": {
+          "status": "skipped"
+        }
+      }
+    },
+    {
+      "id": "missing_pre_patch_evidence",
+      "description": "Missing pre-patch reproduction evidence is insufficient.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "omit_checks": [
+        "pre_patch_reproduction"
+      ]
+    },
+    {
+      "id": "malformed_or_incomplete_worker_report",
+      "description": "An invalid or incomplete report is represented as inconclusive evidence.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "status": "inconclusive",
+          "details": {
+            "report_state": "malformed_or_incomplete"
+          }
+        }
+      }
+    },
+    {
+      "id": "contradictory_phase_conditions",
+      "description": "Different pre- and post-patch conditions are contradictory evidence.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "post_patch_reproduction": {
+          "details": {
+            "conditions_id": "different-conditions"
+          }
+        }
+      }
+    },
+    {
+      "id": "source_syntax_failure",
+      "description": "A source syntax failure prevents verification.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "syntax_check": {
+          "status": "failed",
+          "details": {
+            "syntax_valid": false
+          }
+        }
+      }
+    },
+    {
+      "id": "test_setup_error",
+      "description": "A test setup error is inconclusive evidence.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "status": "inconclusive",
+          "details": {
+            "failure_kind": "setup_error"
+          }
+        }
+      }
+    },
+    {
+      "id": "test_collection_error",
+      "description": "A test collection error is inconclusive evidence.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "status": "inconclusive",
+          "details": {
+            "failure_kind": "collection_error"
+          }
+        }
+      }
+    },
+    {
+      "id": "test_environment_error",
+      "description": "A test environment error is inconclusive evidence.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "pre_patch_reproduction": {
+          "status": "inconclusive",
+          "details": {
+            "failure_kind": "environment_error"
+          }
+        }
+      }
+    },
+    {
+      "id": "malformed_static_analysis_metadata",
+      "description": "Non-list static-analysis metadata cannot satisfy a required check.",
+      "execution_mode": "isolated_sandbox",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "check_overrides": {
+        "static_analysis": {
+          "details": {
+            "checks_completed": true
+          }
+        }
+      }
+    },
+    {
+      "id": "potential_behavior_mismatch_without_runtime_evidence",
+      "description": "A narrow static mismatch finding cannot establish runtime verification.",
+      "execution_mode": "analysis_only",
+      "expected_decision": "INSUFFICIENT_EVIDENCE",
+      "include_checks": [
+        "syntax_check",
+        "static_analysis",
+        "execution_safety"
+      ],
+      "check_overrides": {
+        "static_analysis": {
+          "details": {
+            "behavioral_finding": {
+              "finding_type": "POTENTIAL_BEHAVIOR_MISMATCH",
+              "rule_id": "PG-PY-ADD-SUB-001",
+              "function_name": "add",
+              "detected_operator": "subtraction",
+              "expected_operator": "addition"
+            }
+          }
+        }
+      }
+    }
+  ]
+}
