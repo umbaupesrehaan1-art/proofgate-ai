@@ -1,198 +1,299 @@
-# ProofGate AI
+<div align="center">ProofGate AI
+Evidence-First Verification for AI-Generated Code
+Inspect the change. Examine the evidence. Make a conservative decision.
 
-ProofGate AI is an evidence-first tool for inspecting AI-generated Python changes.
-The current backend performs bounded, read-only source analysis, a narrow
-deterministic behavioral-pattern check, and diff-structure inspection. **Submitted
-source code and tests are never executed.** Syntax validity, a recognized
-operator mismatch, and a well-formed diff are not proof that a fix works at
-runtime.
 
-## Architecture
 
-- `backend/src/proofgate/analyzer.py` validates paths and inspects Python source
-  without importing or executing it. It also applies one explicit AST rule for
-  simple two-argument addition/subtraction requirements.
-- `backend/src/proofgate/runner.py` collects the analysis and reports reproduction
-  and regression checks as skipped.
-- `backend/src/proofgate/policy.py` applies deterministic decision rules (policy
-  `1.0.1`).
-- `backend/src/proofgate/github.py` retrieves bounded public GitHub metadata and
-  Python contents over the fixed GitHub API host, then invokes the existing
-  syntax and diff analyzers. It has no write operations and no authentication.
-- `frontend/` is a React + TypeScript single-page dashboard built with Vite. It
-  sends schema-supported requests to the FastAPI API and renders the API's
-  actual checks, static findings, coverage state, and policy decision.
-- The Vite development server proxies `/api` to the backend. This avoids a broad
-  development CORS policy; the backend does not enable unrestricted CORS.
 
-## Prerequisites
 
-- Windows 10/11.
-- Python 3.12 and the existing backend virtual environment (or setup below).
-- Node.js 20.19+ (or 22.12+) and npm.
 
-## Backend setup
+Overview · Features · Architecture · Getting Started · API · Security
+</div>🧠 Overview
+AI coding tools can generate code quickly, but a plausible-looking patch is not proof that a reported bug has been fixed.
 
-From a Windows CMD prompt at the repository root:
+ProofGate AI is an evidence-first inspection system designed to assess AI-generated Python code changes. It combines bounded static analysis, structured evidence collection, deterministic policy evaluation, and a React dashboard to show what was actually checked—and what remains unknown.
 
-```cmd
-cd /d backend
+The current implementation is deliberately analysis-only:
+- It reads and analyzes source code as data.
+- It checks Python syntax and selected structural patterns.
+- It inspects unified-diff structure.
+- It records checks, skipped checks, findings, and reasons.
+- It does not execute submitted source code or tests.
+[!IMPORTANT]
+A successful syntax check or a matching static pattern does not prove that a change works at runtime. Since reproduction and regression-test execution are not implemented, the current system conservatively returns INSUFFICIENT_EVIDENCE when runtime evidence is required.
+
+✨ Key Features
+Feature	Description
+Evidence-first decisions	Returns structured evidence, check statuses, reasons, and a policy version instead of relying on unsupported claims.
+Python source analysis	Performs bounded, read-only Python source inspection and AST-based syntax analysis.
+Behavioral pattern checks	Applies a narrow deterministic rule for explicit two-argument addition/subtraction requirements.
+Diff inspection	Examines unified-diff structure and identifies changed-file information.
+Repository analysis	Analyzes Python files beneath a server-configured repository root with path and resource safeguards.
+GitHub inspection	Reads bounded public GitHub repository and pull-request content without writing to the repository.
+Conservative policy engine	Applies deterministic decision rules and treats missing, skipped, or inconclusive evidence conservatively.
+Interactive dashboard	Presents verification results, findings, evidence, coverage, and policy decisions in a React + TypeScript interface.
+Automated tests and benchmark	Includes backend and frontend tests plus a deterministic offline policy benchmark.
+
+
+🖥️ Application Workflow
+1. Submit a change — provide a bug description and Python source or a repository-relative file path. A unified diff can also be supplied.
+2. Inspect the input — ProofGate validates the request and performs bounded static analysis.
+3. Collect evidence — completed checks, skipped checks, findings, and relevant metadata are recorded.
+4. Evaluate the policy — the deterministic policy engine evaluates the available evidence.
+5. Review the result — the dashboard displays the decision and explains what was—and was not—verified.
+🏗️ Architecture
+                  ┌─────────────────────────────┐
+                  │       React Dashboard      │
+                  │       React + TypeScript   │
+                  └──────────────┬──────────────┘
+                                 │ HTTP / JSON
+                                 ▼
+                  ┌─────────────────────────────┐
+                  │         FastAPI API         │
+                  │   Validation / Endpoints    │
+                  └──────────────┬──────────────┘
+                                 ▼
+                  ┌─────────────────────────────┐
+                  │       ProofGate Runner      │
+                  │  Analysis & Evidence Flow   │
+                  └────────┬───────────┬────────┘
+                           │           │
+                ┌──────────▼───┐  ┌────▼────────────┐
+                │   Analyzer   │  │ Evidence Builder│
+                │ Python AST   │  │ Structured Data │
+                │ Diff Checks  │  │ & Check Results │
+                └──────────┬───┘  └────┬────────────┘
+                           │           │
+                           └─────┬─────┘
+                                 ▼
+                  ┌─────────────────────────────┐
+                  │       Policy Engine         │
+                  │       Version 1.0.1         │
+                  └──────────────┬──────────────┘
+                                 ▼
+                  ┌─────────────────────────────┐
+                  │ Decision + Evidence Response│
+                  └─────────────────────────────┘
+Backend modules
+Module	Responsibility
+analyzer.py	Validates repository paths and performs bounded Python source and AST analysis.
+runner.py	Orchestrates analysis, evidence collection, skipped checks, and policy evaluation.
+evidence.py	Builds structured evidence records with bounded details and timing metadata.
+policy.py	Applies deterministic verification rules (policy version 1.0.1).
+models.py	Defines typed request and response models.
+languages.py	Provides language-related analysis support.
+github.py	Performs bounded, read-only inspection of public GitHub content.
+benchmark.py	Runs the deterministic offline policy benchmark.
+api/main.py	Exposes the FastAPI application and API endpoints.
+
+
+Repository structure
+proofgate-ai/
+│
+├── .github/
+│   └── workflows/
+│       └── tests.yml
+│
+├── backend/
+│   ├── src/proofgate/
+│   │   ├── api/
+│   │   ├── analyzer.py
+│   │   ├── benchmark.py
+│   │   ├── evidence.py
+│   │   ├── github.py
+│   │   ├── languages.py
+│   │   ├── models.py
+│   │   ├── policy.py
+│   │   └── runner.py
+│   ├── tests/
+│   └── pyproject.toml
+│
+├── benchmark/
+│   ├── fixtures/
+│   └── README.md
+│
+├── docs/
+│   ├── architecture.md
+│   ├── benchmark-methodology.md
+│   ├── demo-readiness-checklist.md
+│   ├── testing-audit-report.md
+│   ├── threat-model.md
+│   └── verification-policy.md
+│
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── vite.config.ts
+│
+├── sandbox/
+│   ├── Dockerfile
+│   └── worker.py
+│
+├── .env.example
+├── .gitignore
+├── LICENSE
+└── README.md
+⚙️ Technology Stack
+Backend
+- Python 3.12 — core application and analysis logic
+- FastAPI — REST API
+- Pydantic — request and response validation
+- Python AST — static source inspection
+- pytest — automated backend tests
+Frontend
+- React — user interface
+- TypeScript — typed frontend code
+- Vite — development server and build tooling
+- Vitest — frontend tests
+Engineering practices
+- Deterministic policy evaluation
+- Bounded input and file processing
+- Structured evidence records
+- Explicit reporting of skipped checks
+- Path validation and symlink/reparse-point safeguards
+- Read-only GitHub inspection
+🚀 Getting Started
+Prerequisites
+Install the following:
+- Windows 10/11 (commands below use Windows PowerShell)
+- Python 3.12
+- Node.js compatible with the frontend toolchain (see docs/demo-readiness-checklist.md)
+- npm
+- Git
+1. Clone the repository
+git clone https://github.com/umbaupesrehaan1-art/proofgate-ai.git
+cd proofgate-ai
+2. Set up the backend
+cd backend
 py -3.12 -m venv .venv
-.venv\Scripts\python.exe -m pip install -e ".[dev]"
-```
+.\.venv\Scripts\python.exe -m pip install -e ".[dev]"
+3. Configure the permitted repository root
+The API only analyzes repository paths beneath a server-configured root. Set the root in the same PowerShell window used to start the backend.
 
-The backend uses the server-side `PROOFGATE_REPOSITORY_ROOT` environment variable
-as its trusted root. It does not automatically load `.env`; `.env.example` shows
-the local project path, but copy the value into the CMD process before starting
-Uvicorn. Keep the backend bound to loopback because there is no authentication.
-
-```cmd
-cd /d C:\Users\DELL\Desktop\proofgate-ai\backend
-set "PROOFGATE_REPOSITORY_ROOT=C:\Users\DELL\Desktop\proofgate-ai"
-.venv\Scripts\python.exe -m uvicorn proofgate.api.main:app --host 127.0.0.1 --port 8000
-```
-
-If using the existing `cypher` Conda environment instead of the project `.venv`,
-run the same app with that interpreter after setting the variable in the same
-CMD window:
-
-```cmd
-cd /d C:\Users\DELL\Desktop\proofgate-ai\backend
-set "PROOFGATE_REPOSITORY_ROOT=C:\Users\DELL\Desktop\proofgate-ai"
-set "PYTHONPATH=C:\Users\DELL\Desktop\proofgate-ai\backend\src"
-C:\Users\DELL\miniconda3\envs\cypher\python.exe -m uvicorn proofgate.api.main:app --host 127.0.0.1 --port 8000
-```
-
-If the value changes, stop Uvicorn with `Ctrl+C`, set the variable in the CMD
-window that will run the backend, and restart Uvicorn there. Setting the value
-in another CMD window or changing `.env.example` alone does not update a running
-process. If no root is set, source-code verification still works and repository
-analysis returns the backend's configured-root error.
-
-## Frontend setup and run
-
-In a separate CMD window at the repository root:
-
-```cmd
-cd /d frontend
+For example, to allow analysis of the cloned project root:
+$env:PROOFGATE_REPOSITORY_ROOT = (Resolve-Path ..).Path
+4. Start the backend
+Run from the backend directory:
+.\.venv\Scripts\python.exe -m uvicorn proofgate.api.main:app --host 127.0.0.1 --port 8000
+The API is available at:
+- Health check: http://127.0.0.1:8000/health
+- Interactive API docs: http://127.0.0.1:8000/docs
+Keep this local development server bound to 127.0.0.1. It has no authentication.
+5. Set up the frontend
+Open a second terminal from the project root:
+cd frontend
 npm ci
 npm run dev
-```
+Open the local URL printed by Vite, normally:
+http://127.0.0.1:5173
+The Vite development server proxies /api requests to the backend at http://127.0.0.1:8000.
+🔌 API Reference
+Method	Endpoint	Purpose
+GET	/health	Health check
+GET	/docs	Interactive API documentation
+GET	/api/v1	API endpoint index
+POST	/api/v1/analyze	Read-only analysis of a permitted repository path
+POST	/api/v1/verify	Evidence collection and policy evaluation
+POST	/api/v1/github/inspect	Bounded, read-only inspection of public GitHub content
 
-Open the local URL printed by Vite, normally `http://127.0.0.1:5173`. The
-development proxy targets `http://127.0.0.1:8000`.
 
-To use another backend, create a root `.env` from `.env.example` and set
-`PROOFGATE_BACKEND_URL` to the backend origin. The browser-facing API base is
-`VITE_PROOFGATE_API_URL` (defaults to `/api`); it must remain a public URL, not a
-secret. In a production deployment, serve the frontend and configure a same-origin
-reverse proxy for `/api`, or explicitly configure the public API base and the
-backend's narrowly allowlisted CORS origins as appropriate. Do not put credentials
-or secrets in any `VITE_` variable.
+Verification request
+POST /api/v1/verify accepts a bug description and exactly one source input: pasted source_code or a repository_path. An optional unified_diff may also be provided. The current supported execution mode is analysis_only.
 
-## Dashboard workflow
+A verification response includes fields such as:
+- verification_id
+- decision
+- summary
+- evidence
+- behavioral_findings
+- checks
+- checks_performed
+- checks_skipped
+- reasons
+- duration_ms
+- policy_version
+See the interactive API documentation at /docs for the exact schemas.
+🧪 Testing & Benchmarking
+Backend tests
+From the repository root:
+cd backend
+.\.venv\Scripts\python.exe -m pytest -v
+Optional quality checks, when installed in the development environment:
+.\.venv\Scripts\python.exe -m pip check
+.\.venv\Scripts\python.exe -m ruff check src tests
+.\.venv\Scripts\python.exe -m ruff format --check src tests
+Frontend tests
+Open another terminal:
+cd frontend
+npm test
+npm run lint
+npx tsc --noEmit
+npm run build
+Offline policy benchmark
+From the repository root:
+cd backend
+.\.venv\Scripts\python.exe -m proofgate.benchmark
+Only publish test or benchmark results that have actually been run. The methodology and audit notes are documented in docs/.
+🛡️ Security & Trust Model
+ProofGate treats submitted source, diffs, repository files, and GitHub content as untrusted input.
 
-The **Verify a change** workspace accepts a bug description and either pasted
-Python source or a repository-relative Python file path. A unified diff is
-optional. It calls `POST /api/v1/verify` with the existing fields:
-`bug_description`, exactly one of `source_code` or `repository_path`, optional
-`unified_diff`, and `execution_mode: "analysis_only"`.
+Current safeguards include:
+- No importing or executing submitted Python source.
+- No execution of submitted tests, project hooks, or repository commands.
+- Bounded request bodies, source files, repository traversal, and GitHub retrieval.
+- Repository analysis restricted to a server-configured root.
+- Path validation and symlink/reparse-point protections for file-content access.
+- Structured errors that avoid returning host paths and exception traces.
+- GitHub inspection restricted to the official API host, using read-only requests.
+Important deployment warning
+The API currently has no authentication or rate limiting. It is intended for local development and must not be exposed to an untrusted network without a security review and appropriate authentication, authorization, rate limiting, and deployment hardening.
 
-The **Analyze repository** workspace calls `POST /api/v1/analyze` with
-`repository_path` and `max_files`. Repository paths are relative to the
-server-configured root; use `.` to analyze that root.
+Read the full [Threat Model](docs/threat-model.md) before deploying or integrating ProofGate into another system.
+⚖️ Current Limitations
+ProofGate is an active engineering project. The following capabilities are not implemented in the current version:
+- Runtime reproduction of bugs
+- Regression-test execution
+- An active isolated execution worker
+- GitHub authentication or private repository access
+- Repository write operations, pull-request comments, approvals, or merges
+- Persistent storage of verification history
+The sandbox/ directory does not mean that a production-ready sandbox is active. The current API does not launch it. Requesting an isolated execution mode does not establish that isolation exists.
+Decision meanings
+Decision	Meaning
+VERIFIED	All mandatory evidence requirements are satisfied. The current analysis-only workflow cannot establish this result.
+NOT_REPRODUCED	A valid pre-patch reproduction attempt did not reproduce the issue under recorded conditions. The current workflow does not run that attempt.
+INSUFFICIENT_EVIDENCE	Required evidence is missing, skipped, inconclusive, or otherwise insufficient. This is the expected conservative result for current analysis-only verification.
 
-The **Inspect GitHub** workspace calls `POST /api/v1/github/inspect` with a
-public `https://github.com/owner/repository` URL, an optional pull-request
-number, and a file limit from 1 to 20. No token or additional environment
-variable is required. Without a pull-request number, the API lists Python files
-on the repository's default branch. For a pull request, it retrieves the PR
-metadata and changed-file patches, and reads supported Python blobs at the PR
-head. Non-Python files are listed but not parsed. The dashboard lets you select
-a changed file to inspect its available patch, added/deleted/context line numbers,
-Python syntax diagnostics, and associated evidence details.
 
-GitHub retrieval is read-only and limited to `api.github.com`; arbitrary URLs
-are rejected and redirects are not followed. Each Python file is limited to
-100 KB, retrieved source to 1 MB total, and each displayed patch to 20 KB.
-API responses are bounded to 1 MB (blob responses to 200 KB); each upstream
-request uses a 5-second timeout, with a 20-second retrieval budget checked
-between API calls. Repository analysis is pinned to a commit, and pull-request
-head/base revisions are rechecked after file retrieval. A truncated tree,
-missing, oversized, malformed, or truncated diff, inaccessible file, structured
-line-count mismatch, line-location cap, or file-count cap is reported as
-incomplete coverage, never as a complete inspection. The GitHub pull-request
-files API may omit a patch for a binary file or an unavailable/oversized diff,
-but does not reliably
-identify which case applies; ProofGate labels such patches as missing rather
-than asserting that a file is binary. If a pull-request file record omits its
-size, the bounded Git blob response's reported size is checked against the
-decoded contents instead. GitHub unauthenticated rate limits apply;
-private repositories are unsupported and may be indistinguishable from missing
-repositories.
+🗺️ Roadmap
+Potential future work, subject to design and security review:
+- A separately reviewed execution-worker architecture
+- Trusted launcher observations and validated worker reports
+- Reproduction and regression evidence under a versioned policy
+- Authentication and authorization for team deployments
+- Persistent verification history and audit views
+- Expanded language and behavioral-analysis support
+These are future directions, not claims about current functionality.
+📚 Documentation
+- [Architecture](docs/architecture.md)
+- [Verification Policy](docs/verification-policy.md)
+- [Threat Model](docs/threat-model.md)
+- [Benchmark Methodology](docs/benchmark-methodology.md)
+- [Testing Audit Report](docs/testing-audit-report.md)
+- [Local Demo Readiness Checklist](docs/demo-readiness-checklist.md)
+🤝 Contributing
+Contributions, issue reports, and thoughtful feedback are welcome.
+1. Fork the repository.
+2. Create a feature branch.
+3. Keep changes focused and add or update tests.
+4. Run the relevant backend and frontend checks.
+5. Open a pull request describing the change, test evidence, and any security implications.
+Please do not submit secrets, private source code, or data you are not authorized to share.
+📄 License
+This project is distributed under the license in the LICENSE file.
+<div align="center">ProofGate AI — Evidence before confidence.
 
-The dashboard displays the backend's returned decision, summary, checks,
-performed/skipped checks, reasons, typed behavioral findings, evidence records,
-and policy version. It never
-infers verification from the submitted text or inserts evidence into requests.
-“Load example” only fills the source editor; it does not execute code. Current
-analysis-only requests should return `INSUFFICIENT_EVIDENCE` for verification
-because reproduction and regression testing are not implemented.
+Built to make AI-generated code changes easier to inspect, question, and evaluate.
 
-The behavioral-pattern rule is intentionally narrow. It recognizes explicit
-requirements such as “The `add(a, b)` function should add its two arguments” or
-“The `subtract(a, b)` function should subtract its two arguments.” It checks only
-a named top-level function with two required positional arguments and one direct
-binary return using those arguments. It can report
-`POTENTIAL_BEHAVIOR_MISMATCH` when the detected operator is the opposite
-addition/subtraction operator. Ambiguous wording, unrecognized requirements,
-different function names, and unsupported expressions are reported as
-unsupported/inconclusive, not guessed. A matching operator means only that this
-rule did not detect a mismatch. Findings are static evidence with an
-`inconclusive` outcome; they do not change the policy decision or establish that
-the function—or program—behaves correctly at runtime.
-
-GitHub inspection shows static syntax findings, diff structure, retrieval
-coverage, and the actual analysis-only policy decision. That decision remains
-`INSUFFICIENT_EVIDENCE`; static analysis is not proof that a patch works at
-runtime. Syntax diagnostic line numbers refer to the retrieved pull-request-head
-source; diff line mappings refer to the returned patch text. Structured diff
-line mappings are capped at 2,500 records per inspection; if that cap is hit,
-the result marks coverage incomplete while retaining the bounded raw patch.
-GitHub content, names, and diffs are untrusted input. The service does not check
-out repositories, execute code, install dependencies, create commits, post
-comments, approve, or merge pull requests.
-
-## API and checks
-
-- `GET /health`
-- `GET /docs`
-- `POST /api/v1/analyze`
-- `POST /api/v1/verify`
-- `POST /api/v1/github/inspect`
-
-Run backend validation from `backend`:
-
-```cmd
-.venv\Scripts\python.exe -m pytest -v
-.venv\Scripts\python.exe -m pip check
-.venv\Scripts\python.exe -m ruff check src tests
-.venv\Scripts\python.exe -m ruff format --check src tests
-```
-
-Run the deterministic offline policy benchmark from the repository root:
-
-```cmd
-cd /d backend && .venv\Scripts\python.exe -m proofgate.benchmark
-```
-
-## Limitations
-
-There is no execution worker, runtime reproduction, regression-test execution,
-GitHub authentication, persistence, or repository write integration. GitHub
-inspection is public-only and subject to unauthenticated API rate limits.
-`isolated_sandbox` is
-currently unsupported; requesting it does not run code or imply that a sandbox
-exists. Evidence and decisions reflect only the analysis actually performed.
-Repository inspection is restricted to the root configured by the backend
-operator. Do not expose the development API to an untrusted network.
+Back to top
+</div>
